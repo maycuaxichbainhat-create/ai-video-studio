@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+renders/*.mp4
+renders/*.wav
+projects/*.json
+assets/generated/
+.vscode/
+.idea/
