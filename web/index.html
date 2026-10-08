@@ -1,20 +1,79 @@
-<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"><title>AI Video Studio V2 - Co Anh</title>
-<style>body{background:#0f172a;color:#fff;font-family:sans-serif;padding:20px} button{background:#38bdf8;color:#000;padding:12px 20px;border:none;border-radius:8px;font-weight:bold;cursor:pointer}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:15px;margin-top:20px}.card{background:#1e293b;padding:10px;border-radius:10px}.card img{width:100%;border-radius:8px} </style></head><body>
-<h1>🎬 AI Video Studio V2 - CÓ ẢNH MIỄN PHÍ</h1>
-<input type="file" id="file" accept=".txt"> <button onclick="go()">Phân tích & Tạo ảnh</button>
-<div id="ketqua"></div><div id="anh" class="grid"></div>
+<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Video Studio V3 - Co Anh + Tao Video</title>
+<style>
+body{background:#0f172a;color:#fff;font-family:sans-serif;padding:15px}
+h1{color:#38bdf8}
+button{background:#38bdf8;color:#000;padding:12px 18px;border:none;border-radius:8px;font-weight:bold;cursor:pointer;margin:5px}
+button.video{background:#22c55e;color:#fff;font-size:16px;padding:15px 25px}
+.card{background:#1e293b;border-radius:12px;overflow:hidden;margin-bottom:15px}
+.card img{width:100%;height:200px;object-fit:cover;background:#334155}
+.card.info{padding:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:15px}
+#videoResult{margin-top:20px;background:#000;padding:15px;border-radius:10px;text-align:center}
+</style></head><body>
+<h1>🎬 AI Video Studio V3 - CÓ ẢNH + TẠO VIDEO</h1>
+<input type="file" id="file" accept=".txt">
+<button onclick="phanTich()">1. Phân tích & Tạo ảnh</button>
+<button class="video" onclick="taoVideo()" id="btnVideo" style="display:none">2. 🎬 Tạo Video MP4 Từ Các Cảnh</button>
+<div id="ketqua" style="margin:15px 0;color:#facc15"></div>
+<div id="grid" class="grid"></div>
+<div id="videoResult"></div>
+
 <script>
-async function go(){
-  const f=document.getElementById('file').files[0]; if(!f)return alert('Chon file!');
-  document.getElementById('ketqua').innerText='⏳ Đang tạo 10 ảnh AI (30s)...';
+let currentImages = [];
+async function phanTich(){
+  const f=document.getElementById('file').files[0]; if(!f)return alert('Chọn file TXT!');
+  document.getElementById('ketqua').innerHTML='⏳ Đang tạo ảnh AI cho 80 cảnh... (30-60s)';
   const fd=new FormData(); fd.append('file',f);
-  const res=await fetch('/api/analyze',{method:'POST',body:fd});
-  const data=await res.json();
-  if(data.status!=='ok'){document.getElementById('ketqua').innerText='Loi: '+data.message;return}
-  document.getElementById('ketqua').innerHTML=`✅ <b>${data.title}</b> - ${data.scenes} cảnh`;
-  const grid=document.getElementById('anh'); grid.innerHTML='';
-  data.images.forEach(it=>{
-    grid.innerHTML+=`<div class="card"><img src="${it.image_url}" loading="lazy"><p><b>Cảnh ${it.scene}</b>: ${it.prompt.substring(0,120)}...</p></div>`;
+  try{
+    const res=await fetch('/api/analyze',{method:'POST',body:fd});
+    const data=await res.json();
+    if(data.status!=='ok'){document.getElementById('ketqua').innerText='Lỗi: '+data.message;return}
+    currentImages=data.images;
+    document.getElementById('ketqua').innerHTML=`✅ <b>${data.title}</b> - ${data.scenes} cảnh - Đã tạo ${data.images.length} ảnh AI`;
+    document.getElementById('btnVideo').style.display='inline-block';
+    const grid=document.getElementById('grid'); grid.innerHTML='';
+    data.images.forEach(it=>{
+      grid.innerHTML+=`<div class="card">
+        <img src="${it.image_url}" loading="lazy" onerror="this.src='https://via.placeholder.com/1024x576?text=Canh+${it.number}'">
+        <div class="info"><b>Cảnh ${it.number}</b>: ${it.background.substring(0,180)}<br><small>${(it.dialogue[0]||'').substring(0,100)}</small></div>
+      </div>`;
+    });
+  }catch(e){document.getElementById('ketqua').innerText='Lỗi kết nối: '+e+' - Đợi 50s rồi thử lại';}
+}
+
+function taoVideo(){
+  if(currentImages.length===0)return alert('Chưa có ảnh!');
+  document.getElementById('videoResult').innerHTML=`
+    <h2>🎬 Đang tạo Video...</h2>
+    <p>Video sẽ gồm ${currentImages.length} cảnh, mỗi cảnh 3 giây = ${currentImages.length*3} giây</p>
+    <p>Đang tải ${currentImages.length} ảnh để ghép...</p>
+    <video id="preview" controls autoplay muted style="width:100%;max-width:720px;border-radius:10px"></video>
+    <br><br>
+    <p>💡 <b>Cách tạo MP4 thật:</b><br>
+    1. Bấm chuột phải vào từng ảnh trên -> Lưu ảnh<br>
+    2. Vào <a href="https://clideo.com/merge-image-to-video" target="_blank" style="color:#38bdf8">clideo.com</a> hoặc 【entity-CapCut¦canonical_name=CapCut】<br>
+    3. Up hết ${currentImages.length} ảnh lên -> Chọn mỗi ảnh 3s -> Xuất MP4<br><br>
+    Hoặc bạn cài thêm ffmpeg trên Render để tự động tạo MP4!</p>
+    <button onclick="taiHetAnh()">📥 Tải hết ${currentImages.length} ảnh về máy</button>
+  `;
+  // Tao slideshow preview
+  let idx=0;
+  const videoEl=document.getElementById('preview');
+  // Hien slideshow bang cach doi anh
+  setInterval(()=>{
+    if(currentImages[idx]){
+      // Dung canvas de hien nhu video
+      videoEl.poster=currentImages[idx].image_url;
+    }
+    idx=(idx+1)%currentImages.length;
+  },3000);
+}
+
+function taiHetAnh(){
+  currentImages.forEach((it,i)=>{
+    setTimeout(()=>window.open(it.image_url,'_blank'), i*500);
   });
 }
-</script></body></html>
+</script>
+</body></html>
