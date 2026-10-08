@@ -1,43 +1,63 @@
 import re
-from .models import Project, Scene, Character, Dialogue
 
-def parse_script(text: str, title: str = "Untitled Project") -> Project:
-    blocks = re.split(r"(?im)^\s*CẢNH\s+(\d+)\s*$", text)
+def parse_script(text):
+    """
+    Phiên bản KHÔNG CẦN OpenAI - Chạy 100% local
+    """
     scenes = []
-    # blocks = preamble, number, content, number, content...
-    for i in range(1, len(blocks), 2):
-        number = int(blocks[i])
-        content = blocks[i + 1]
-        background = ""
-        chars = []
-        dialogues = []
-        music = None
-        sfx = []
-        for raw in content.splitlines():
-            line = raw.strip()
-            if not line:
-                continue
-            m = re.match(r"(?i)^BỐI CẢNH\s*:\s*(.+)$", line)
-            if m:
-                background = m.group(1).strip()
-                continue
-            m = re.match(r"(?i)^NHẠC\s*:\s*(.+)$", line)
-            if m:
-                music = m.group(1).strip()
-                continue
-            m = re.match(r"(?i)^SFX\s*:\s*(.+)$", line)
-            if m:
-                sfx.extend([x.strip() for x in m.group(1).split(",")])
-                continue
-            m = re.match(r"^([^:]{1,60})\s*:\s*(.+)$", line)
-            if m:
-                name, speech = m.group(1).strip(), m.group(2).strip()
-                if name.upper() not in {"BỐI CẢNH", "NHẠC", "SFX"}:
-                    dialogues.append(Dialogue(character=name, text=speech))
-                    if not any(c.name == name for c in chars):
-                        chars.append(Character(name=name))
-        duration = max(4.0, sum(max(2.0, len(d.text) / 12) for d in dialogues))
-        scenes.append(Scene(number=number, background=background,
-                            characters=chars, dialogue=dialogues,
-                            music=music, sfx=sfx, duration=duration))
-    return Project(title=title, scenes=scenes)
+    current_scene = {"title": "Cảnh 1", "dialogues": []}
+    
+    lines = text.strip().split('\n')
+    
+    scene_pattern = re.compile(r'^(Cảnh|Scene|CANH|SCENE)\s*(\d+)?\s*[-:]?\s*(.*)', re.IGNORECASE)
+    dialogue_pattern = re.compile(r'^([^:]{1,20}):\s*(.+)$')
+
+    scene_counter = 1
+
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+            
+        scene_match = scene_pattern.match(line)
+        if scene_match:
+            if current_scene["dialogues"]:
+                scenes.append(current_scene)
+            title = line if len(line) < 100 else f"Cảnh {scene_counter}"
+            current_scene = {"title": title, "dialogues": []}
+            scene_counter += 1
+            continue
+        
+        dialogue_match = dialogue_pattern.match(line)
+        if dialogue_match:
+            character = dialogue_match.group(1).strip()
+            dialogue = dialogue_match.group(2).strip()
+            if len(character) <= 15:
+                current_scene["dialogues"].append({
+                    "character": character,
+                    "text": dialogue
+                })
+        else:
+            if current_scene["dialogues"]:
+                current_scene["dialogues"][-1]["text"] += " " + line
+            else:
+                current_scene["dialogues"].append({
+                    "character": "Người dẫn chuyện",
+                    "text": line
+                })
+
+    if current_scene["dialogues"]:
+        scenes.append(current_scene)
+    
+    if not scenes:
+        all_dialogues = []
+        for line in lines:
+            if line.strip():
+                dm = dialogue_pattern.match(line.strip())
+                if dm and len(dm.group(1).strip()) <= 15:
+                    all_dialogues.append({"character": dm.group(1).strip(), "text": dm.group(2).strip()})
+                else:
+                    all_dialogues.append({"character": "Người dẫn chuyện", "text": line.strip()})
+        scenes = [{"title": "Cảnh 1", "dialogues": all_dialogues}]
+        
+    return scenes
