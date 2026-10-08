@@ -1,34 +1,20 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head><meta charset="UTF-8"><title>AI Video Studio V1 - FIX</title>
-<style>body{background:#0f172a;color:#fff;font-family:sans-serif;padding:30px}
-button{background:#38bdf8;color:#000;padding:12px 20px;border:none;border-radius:8px;font-weight:bold;cursor:pointer}
-#ketqua{margin-top:20px;background:#1e293b;padding:15px;border-radius:8px;white-space:pre-wrap}
-</style></head>
-<body>
-<h1>🎬 AI Video Studio V1 - BẢN FIX KHÔNG CẦN KEY</h1>
-<p>TXT → nhiều cảnh → nhiều nhân vật → thoại → render MP4 → tải video.</p>
-<input type="file" id="file" accept=".txt">
-<button onclick="phanTich()">Phân tích kịch bản</button>
-<div id="ketqua">Chọn file và bấm nút...</div>
+<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"><title>AI Video Studio V2 - Co Anh</title>
+<style>body{background:#0f172a;color:#fff;font-family:sans-serif;padding:20px} button{background:#38bdf8;color:#000;padding:12px 20px;border:none;border-radius:8px;font-weight:bold;cursor:pointer}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:15px;margin-top:20px}.card{background:#1e293b;padding:10px;border-radius:10px}.card img{width:100%;border-radius:8px} </style></head><body>
+<h1>🎬 AI Video Studio V2 - CÓ ẢNH MIỄN PHÍ</h1>
+<input type="file" id="file" accept=".txt"> <button onclick="go()">Phân tích & Tạo ảnh</button>
+<div id="ketqua"></div><div id="anh" class="grid"></div>
 <script>
-async function phanTich(){
-  const f = document.getElementById('file').files[0];
-  if(!f){ alert('Chưa chọn file!'); return; }
-  const ketqua = document.getElementById('ketqua');
-  ketqua.innerText = '⏳ Đang phân tích (đợi 50s nếu web vừa ngủ)...';
-  const form = new FormData(); form.append('file', f);
-  try{
-    const res = await fetch('/api/analyze', {method:'POST', body: form});
-    const data = await res.json();
-    if(data.status==='ok'){
-      ketqua.innerText = `✅ THÀNH CÔNG!\nTựa: ${data.title}\nSố cảnh: ${data.scenes}\n\nChi tiết:\n` + JSON.stringify(data.project, null, 2);
-    }else{
-      ketqua.innerText = '❌ LỖI: ' + data.message;
-    }
-  }catch(e){
-    ketqua.innerText = '❌ LỖI KẾT NỐI: ' + e + '\nThử đợi 50s rồi bấm lại (Render free hay ngủ)';
-  }
+async function go(){
+  const f=document.getElementById('file').files[0]; if(!f)return alert('Chon file!');
+  document.getElementById('ketqua').innerText='⏳ Đang tạo 10 ảnh AI (30s)...';
+  const fd=new FormData(); fd.append('file',f);
+  const res=await fetch('/api/analyze',{method:'POST',body:fd});
+  const data=await res.json();
+  if(data.status!=='ok'){document.getElementById('ketqua').innerText='Loi: '+data.message;return}
+  document.getElementById('ketqua').innerHTML=`✅ <b>${data.title}</b> - ${data.scenes} cảnh`;
+  const grid=document.getElementById('anh'); grid.innerHTML='';
+  data.images.forEach(it=>{
+    grid.innerHTML+=`<div class="card"><img src="${it.image_url}" loading="lazy"><p><b>Cảnh ${it.scene}</b>: ${it.prompt.substring(0,120)}...</p></div>`;
+  });
 }
-</script>
-</body></html>
+</script></body></html>
