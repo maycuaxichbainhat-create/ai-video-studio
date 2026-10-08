@@ -1,6 +1,6 @@
 import re
 
-def parse_script(text):
+def parse_script(text, title="Kịch bản"):
     """
     Phiên bản KHÔNG CẦN OpenAI - Chạy 100% local
     """
